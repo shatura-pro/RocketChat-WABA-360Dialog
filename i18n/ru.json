@@ -1,0 +1,10 @@
+{
+    "wapptmpls_description": "Команда откроет макет с выбором шаблона и вводом номера телефона",
+    "D360-API-KEY-setting-label": "360Dialog API KEY",
+    "D360-API-KEY-setting-description": "Введите здесь API KEY D360Dialog, если вы его знаете, если нет, сгенерируйте его на https://hub.360dialog.com",
+    "WhatsApp-WebHook-setting-label": "APIs POST templateMessage из WhatsApp от Rocket.Chat",
+    "WhatsApp-WebHook-setting-description": "Вставьте ссылку на webhook (POST templateMessage) из настроек APIs",
+    "languageCode-setting-label": "Код языка шаблонов",
+    "languageCode-setting-description": "Введите код языка для сортировки шаблонов"
+}
+

@@ -1,0 +1,19 @@
+{
+    "id": "6a150835-3bd1-41da-894b-f421c8c3e370",
+    "version": "0.0.1",
+    "requiredApiVersion": "^1.19.0",
+    "iconFile": "icon.png",
+    "author": {
+        "name": "Alexander Novozhenin",
+        "homepage": "https://rocket.shatura.pro",
+        "support": "rocket@shatura.pro"
+    },
+    "name": "WABA 360Dialog",
+    "nameSlug": "wabadialog",
+    "classFile": "Waba360DialogApp.ts",
+    "description": "WABA 360Dialog integration",
+    "implements": [
+        "IPostMessageSent",
+        "IPostLivechatRoomClosed"
+    ]
+}

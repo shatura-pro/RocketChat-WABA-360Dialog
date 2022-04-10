@@ -1,0 +1,9 @@
+{
+    "wapptmpls_description": "This command will open layout with template choose and telephone number enter.",
+    "D360-API-KEY-setting-label": "D360Dialog API KEY",
+    "D360-API-KEY-setting-description": "Input D360Dialog API KEY here if you know it, if not generate it on https://hub.360dialog.com",
+    "WhatsApp-WebHook-setting-label": "APIs POST templateMessage from WhatsApp by Rocket.Chat",
+    "WhatsApp-WebHook-setting-description": "Paste the link to the webhook (POST templateMessage) from the APIs settings",
+    "languageCode-setting-label": "Language code",
+    "languageCode-setting-description": "Enter the language code to sort the templates"
+}
