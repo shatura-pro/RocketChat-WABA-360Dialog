@@ -11,7 +11,9 @@ import {
 } from '@rocket.chat/apps-engine/definition/accessors';
 import { ApiSecurity, ApiVisibility } from '@rocket.chat/apps-engine/definition/api/IApi';
 import { App } from '@rocket.chat/apps-engine/definition/App';
+import { ILivechatEventContext } from '@rocket.chat/apps-engine/definition/livechat/ILivechatEventContext';
 import { ILivechatRoom } from '@rocket.chat/apps-engine/definition/livechat/ILivechatRoom';
+import { IPostLivechatAgentAssigned } from '@rocket.chat/apps-engine/definition/livechat/IPostLivechatAgentAssigned';
 import { IPostLivechatRoomClosed } from '@rocket.chat/apps-engine/definition/livechat/IPostLivechatRoomClosed';
 import { IMessage } from '@rocket.chat/apps-engine/definition/messages/IMessage';
 import { IPostMessageSent } from '@rocket.chat/apps-engine/definition/messages/IPostMessageSent';
@@ -22,13 +24,15 @@ import {
 } from '@rocket.chat/apps-engine/definition/metadata';
 import { ISetting, SettingType } from '@rocket.chat/apps-engine/definition/settings';
 
+import { API } from './API/api';
 import { Webhook } from './endpoints/webhook';
-import { SDK } from './lib/sdk';
+import { PersisUsage } from './persistence/persisusage';
 import { WAPPTmplsCommands } from './slashcommans/wapptmplscommands';
 
 export class Waba360DialogApp
     extends App
-    implements IPostMessageSent, IPostLivechatRoomClosed {
+    implements IPostMessageSent, IPostLivechatRoomClosed,
+    IPostLivechatAgentAssigned {
     public D360APIKEY: string;
     public TemplatesLanguageCode: string;
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
@@ -66,7 +70,7 @@ export class Waba360DialogApp
                     .getEnvironmentReader()
                     .getServerSettings()
                     .getValueById('Site_Url');
-                const updateWebhook = new SDK(this, http);
+                const updateWebhook = new API(read, http);
                 await updateWebhook.setwebhook(serverURL, this.getID());
                 break;
         }
@@ -80,37 +84,23 @@ export class Waba360DialogApp
         modify: IModify,
     ): Promise<void> {
 
-        const association = [
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.MISC,
-                'active-room',
-            ),
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.ROOM,
-                message.room.id,
-            ),
-        ];
-        let result: Array<any> | undefined = [];
-        try {
-            const records: Array<{
-                roomLiveChat: string;
-            }> = (await read
-                .getPersistenceReader()
-                .readByAssociations(association)) as Array<{
-                roomLiveChat: string;
-            }>;
-            if (records.length) {
-                result = Array.from(records);
-            }
-        } catch (err) {
-            console.warn(err);
-        }
-        if (result.length !== 0 && message.sender.type === 'user') {
-            const forwardMessage = new SDK(this, http);
-            forwardMessage.sendMessage(
+        const persis = new PersisUsage(read, persistence);
+        const result = await persis.readRoomInfoByRoomIDPersis(message.room.id);
+        if (result.length !== 0 && message.id !== undefined &&
+            (message.sender.type === 'user' ||
+                message.sender.type === 'bot')) {
+
+            const waMessage = new API(read, http);
+            const lcMessageID = await waMessage.sendMessage(
                 result[0].roomLiveChat.visitor.username,
                 message.text);
+            persis.writeMessageInfoPersis(message.room.id,
+                lcMessageID.messages[0].id,
+                message.id,
+                false,
+            );
         }
+
     }
 
     public async executePostLivechatRoomClosed(
@@ -122,29 +112,25 @@ export class Waba360DialogApp
     ): Promise<void> {
 
         // Delete information about active Visitor room
-        const association1 = [
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.MISC,
-                'active-room',
-            ),
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.MISC,
-                room.visitor.username,
-            ),
-        ];
-        const association2 = [
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.MISC,
-                'active-room',
-            ),
+        const association = [
             new RocketChatAssociationRecord(
                 RocketChatAssociationModel.ROOM,
                 room.id,
             ),
         ];
 
-        persis.removeByAssociations(association1);
-        persis.removeByAssociations(association2);
+        persis.removeByAssociations(association);
+    }
+
+    public async executePostLivechatAgentAssigned(context: ILivechatEventContext,
+                                                  read: IRead,
+                                                  http: IHttp,
+                                                  persis: IPersistence,
+                                                  modify: IModify): Promise<void> {
+        const serachLastMessage = new PersisUsage(read, persis);
+        const lastMessages = await serachLastMessage.readLastMessage(context.room.id);
+        const api = new API(read, http);
+        api.markMessageRead(lastMessages);
     }
 
     protected async extendConfiguration(
@@ -181,5 +167,4 @@ export class Waba360DialogApp
             i18nDescription: 'languageCode-setting-description',
         });
     }
-
 }

@@ -1,5 +1,6 @@
-import { HttpStatusCode, IHttp, IModify, IPersistence, IRead } from '@rocket.chat/apps-engine/definition/accessors';
+import { IHttp, IModify, IPersistence, IRead } from '@rocket.chat/apps-engine/definition/accessors';
 import { ApiEndpoint, IApiEndpointInfo, IApiRequest, IApiResponse } from '@rocket.chat/apps-engine/definition/api';
+
 import { Webhookrequests } from '../lib/webhookrequests';
 
 export class Webhook extends ApiEndpoint {
@@ -14,13 +15,15 @@ export class Webhook extends ApiEndpoint {
         persis: IPersistence,
     ): Promise<IApiResponse> {
 
-            const newRequest = new Webhookrequests(
+        const newRequest = new Webhookrequests(
                 request,
                 read,
                 modify,
+                http,
                 persis,
-            );
-            newRequest.sendMessage();
-            return this.success();
+        );
+
+        newRequest.receiveMessage();
+        return this.success();
     }
 }

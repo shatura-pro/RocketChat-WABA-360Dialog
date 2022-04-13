@@ -14,6 +14,7 @@
     "description": "WABA 360Dialog integration",
     "implements": [
         "IPostMessageSent",
-        "IPostLivechatRoomClosed"
+        "IPostLivechatRoomClosed",
+        "IPostLivechatAgentAssigned"
     ]
 }

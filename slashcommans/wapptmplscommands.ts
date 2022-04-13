@@ -1,7 +1,7 @@
 import { IHttp, IModify, IPersistence, IRead } from '@rocket.chat/apps-engine/definition/accessors';
 import { ISlashCommand, SlashCommandContext } from '@rocket.chat/apps-engine/definition/slashcommands';
 
-import { SDK } from '../lib/sdk';
+import { API } from '../API/api';
 import { Waba360DialogApp } from '../Waba360DialogApp';
 
 export class WAPPTmplsCommands implements ISlashCommand {
@@ -21,14 +21,13 @@ export class WAPPTmplsCommands implements ISlashCommand {
         http: IHttp,
         persis: IPersistence,
     ): Promise<void> {
-        const requestTemplates = new SDK(
-            this.app,
+        const requestTemplates = new API(
+            read,
             http,
         );
-        const templates = await requestTemplates.reuqestTemplates();
+        const templates = await requestTemplates.requestTemplates();
         const TmplsList: Array<any> = [];
         templates.waba_templates.forEach((item: any) => {
-            // tslint:disable-next-line:max-line-length
             if (
                 item.status === 'approved' &&
                 item.language === this.app.TemplatesLanguageCode &&
