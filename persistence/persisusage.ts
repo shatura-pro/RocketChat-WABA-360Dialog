@@ -161,7 +161,7 @@ export class PersisUsage {
     }
 
     public async readLastMessage(roomID: string):
-        Promise<Array<IPersisLastMessage>> {
+        Promise<IPersisLastMessage> {
         const associations = [
             new RocketChatAssociationRecord(
                 RocketChatAssociationModel.MISC,
@@ -182,7 +182,7 @@ export class PersisUsage {
         } catch (err) {
             console.warn(err);
         }
-        return result;
+        return result[0];
     }
 
    public async writeLastMessage(roomID: string, lcMessageID: string):

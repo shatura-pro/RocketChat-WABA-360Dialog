@@ -95,7 +95,7 @@ export class API {
         return result;
     }
 
-    public async markMessageRead(messages: Array<IPersisLastMessage>):
+    public async markMessageRead(message: IPersisLastMessage):
         Promise<void> {
         this.APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
@@ -112,12 +112,32 @@ export class API {
             },
         };
 
-        for (const el of messages) {
-            setTimeout(() => {
-                const newUrl = url + '/' + el.lcMessageID;
-                this.http.put(newUrl, httpRequest);
-            }, 2000);
-        }
+        setTimeout(() => {
+            const newUrl = url + '/' + message.lcMessageID;
+            this.http.put(newUrl, httpRequest);
+        }, 2000);
+    }
+
+    public async deleteAttach(attachID: string):
+        Promise<void> {
+        this.APIKEY = await this.read.getEnvironmentReader()
+            .getSettings()
+            .getValueById('D360-API-KEY');
+
+        const url = `${this.basePath}/v1/messages`;
+        const httpRequest: IHttpRequest = {
+            content: JSON.stringify({
+                status: 'read',
+            }),
+            headers: {
+                'D360-API-KEY': this.APIKEY,
+            },
+        };
+
+        setTimeout(() => {
+            const newUrl = url + '/' + attachID;
+            this.http.del(newUrl, httpRequest);
+        }, 2000);
     }
 
     private async post(url: string, packageContent: object): Promise<object> {

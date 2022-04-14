@@ -26,6 +26,7 @@ import { ISetting, SettingType } from '@rocket.chat/apps-engine/definition/setti
 
 import { API } from './API/api';
 import { Webhook } from './endpoints/webhook';
+import { IPersisMessageInfo } from './persistence/interfaces/IPersisMessageInfo';
 import { PersisUsage } from './persistence/persisusage';
 import { WAPPTmplsCommands } from './slashcommans/wapptmplscommands';
 
@@ -111,6 +112,28 @@ export class Waba360DialogApp
         modify?: IModify,
     ): Promise<void> {
 
+        const api = new API(read, http);
+        // Delete all files on 360Dialog
+        const associations = [
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.ROOM,
+                room.id,
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.MISC,
+                'wa-message',
+            ),
+        ];
+
+        const allMessages = (await read.getPersistenceReader()
+            .readByAssociations(associations)) as unknown as Array<IPersisMessageInfo>;
+
+        for (const el of allMessages) {
+            if (el.attachID !== '') {
+                api.deleteAttach(el.attachID);
+            }
+        }
+
         // Delete information about active Visitor room
         const association = [
             new RocketChatAssociationRecord(
@@ -127,10 +150,10 @@ export class Waba360DialogApp
                                                   http: IHttp,
                                                   persis: IPersistence,
                                                   modify: IModify): Promise<void> {
-        const serachLastMessage = new PersisUsage(read, persis);
-        const lastMessages = await serachLastMessage.readLastMessage(context.room.id);
+        const searchLastMessage = new PersisUsage(read, persis);
+        const lastMessage = await searchLastMessage.readLastMessage(context.room.id);
         const api = new API(read, http);
-        api.markMessageRead(lastMessages);
+        api.markMessageRead(lastMessage);
     }
 
     protected async extendConfiguration(

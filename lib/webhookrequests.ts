@@ -1,4 +1,4 @@
-import { IHttp } from '@rocket.chat/apps-engine/definition/accessors';
+import { IHttp, ILivechatMessageBuilder } from '@rocket.chat/apps-engine/definition/accessors';
 import { IModify } from '@rocket.chat/apps-engine/definition/accessors/IModify';
 import { IPersistence } from '@rocket.chat/apps-engine/definition/accessors/IPersistence';
 import { IRead } from '@rocket.chat/apps-engine/definition/accessors/IRead';
@@ -10,7 +10,8 @@ import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
 import { IUploadDescriptor } from '@rocket.chat/apps-engine/definition/uploads/IUploadDescriptor';
 
 import { API } from '../API/api';
-import { WabaMessageStructureCreator } from '../API/WabaMessageStructureCreator';
+import { IWAMessageTypeImage } from '../API/interfaces/IWAMessageType/IWAMessageTypeImage';
+import { IWAMessageTypeText } from '../API/interfaces/IWAMessageType/IWAMessageTypeText';
 import { IPersisRoomInfo } from '../persistence/interfaces/IPersisRoomInfo';
 import { PersisUsage } from '../persistence/persisusage';
 import { uuid } from './uuid';
@@ -42,14 +43,11 @@ export class Webhookrequests {
 
     public async receiveMessage() {
         // console.log(`BODY REQUEST: ${JSON.stringify(this.bodyRequest)}`);
-        const bodyTypeMessage = this.bodyRequest.messages[0].type;
-
         const wabaContact = this.bodyRequest.contacts[0];
         let wabaMessageID: string = '';
+        let wabaAttachID: string = '';
         let wabaText: string | undefined;
-
         const persis = new PersisUsage(this.read, this.persis);
-        const wabaMessageType = new WabaMessageStructureCreator(this.bodyRequest);
         const api = new API(this.read, this.http);
 
         let rcMessageID: string = '';
@@ -59,141 +57,130 @@ export class Webhookrequests {
         let lcRoom: ILivechatRoom;
 
         //
-        switch (bodyTypeMessage) {
-            case 'image':
-                wabaMessageID = wabaMessageType.image.id;
-                wabaText = (wabaMessageType.image.image.caption) ? wabaMessageType.image.image.caption : '';
-                if (roomInfo.length === 0) {
-                    const livechatCreator = this.modify
-                        .getCreator()
-                        .getLivechatCreator();
-                    let visitor = await this.read
-                        .getLivechatReader()
-                        .getLivechatVisitorByPhoneNumber(wabaContact.wa_id);
-                    // Check visitor available
-                    if (!visitor) {
-                        const visitorToken = livechatCreator.createToken();
-                        visitor = {
-                            id: uuid(),
-                            name: wabaContact.profile.name,
-                            username: wabaContact.wa_id,
-                            phone: [{ phoneNumber: wabaMessageType.image.from }],
-                            token: visitorToken,
-                        };
-                        // Create Visitor in system
-                        livechatCreator.createVisitor(visitor);
-                    }
-                    const roomCreator = await this.read
-                        .getUserReader()
-                        .getByUsername('');
-                    lcRoom = await livechatCreator.createRoom(
-                        visitor,
-                        roomCreator,
-                    );
-
-                    const attachResponse = await api.requestFile(
-                        wabaMessageType.image.image.id);
-                    const fileBuffer = Buffer.from(attachResponse.content);
-                    const filenameBeforeRegex = attachResponse.headers['content-disposition'];
-                    const filename = filenameBeforeRegex.match('attachment; filename=(.*)');
-                    if (!filename) {
-                        return;
-                    }
-                    console.log(`FILENAME: ${filename}`);
-                    const uploadDescriptor: IUploadDescriptor = {
-                        filename: filename[1],
-                        room: lcRoom,
-                        visitorToken: lcRoom.visitor.token,
+        if (this.bodyRequest.messages[0].type === 'image') {
+            const wabaMessage = (this.bodyRequest.messages[0]) as IWAMessageTypeImage;
+            wabaMessageID = wabaMessage.id;
+            wabaAttachID = wabaMessage.image.id;
+            wabaText = (wabaMessage.image.caption) ? wabaMessage.image.caption : '';
+            if (roomInfo.length === 0) {
+                const livechatCreator = this.modify
+                    .getCreator()
+                    .getLivechatCreator();
+                let visitor = await this.read
+                    .getLivechatReader()
+                    .getLivechatVisitorByPhoneNumber(wabaContact.wa_id);
+                console.log(`FIND VISITOR: ${JSON.stringify(visitor)}`);
+                // Check visitor available
+                console.log(`CHECK VISITOR: ${!visitor}`);
+                if (!visitor) {
+                    const visitorToken = livechatCreator.createToken();
+                    visitor = {
+                        id: uuid(),
+                        name: wabaContact.profile.name,
+                        username: wabaContact.wa_id,
+                        phone: [{ phoneNumber: wabaMessage.from }],
+                        token: visitorToken,
                     };
-                    const attachBuffer = await this.modify.getCreator()
-                        .getUploadCreator()
-                        .uploadBuffer(fileBuffer, uploadDescriptor);
-                    const attach: IMessageAttachment = {
-                        imageUrl: attachBuffer.url,
-                        collapsed: true,
-                    };
-                    persis.writeRoomInfoPersis(lcRoom);
-                    rcMessageID = await this.sendMessageToRoomWithAttach(lcRoom,
-                        lcRoom.visitor,
-                        attach,
-                        wabaText,
-                    );
-                    break;
-
-                } else {
-                    const [obj] = roomInfo;
-                    lcRoom = obj.roomLiveChat; // Export LivechatRoom info from Persis
-                    const attachResponse = await api.requestFile(
-                        wabaMessageType.image.image.id);
-                    const fileBuffer = Buffer.from(attachResponse.content);
-                    const filenameBeforeRegex = attachResponse.headers['content-disposition'];
-                    const filename = filenameBeforeRegex.match('attachment; filename=(.*)');
-                    if (!filename) {
-                        return;
-                    }
-                    const uploadDescriptor: IUploadDescriptor = {
-                        filename: filename[1],
-                        room: lcRoom,
-                        visitorToken: lcRoom.visitor.token,
-                    };
-                    const attachBuffer = await this.modify.getCreator()
-                        .getUploadCreator()
-                        .uploadBuffer(fileBuffer, uploadDescriptor);
-                    console.log(`ATTACH BUFER: ${JSON.stringify(attachBuffer)}`);
-                    const attach: IMessageAttachment = {
-                        imageUrl: attachBuffer.url,
-                        collapsed: true,
-                    };
-
-                    rcMessageID = await this.sendMessageToRoomWithAttach(lcRoom,
-                        lcRoom.visitor,
-                        attach,
-                        wabaText);
+                    // Create Visitor in system
+                    livechatCreator.createVisitor(visitor);
                 }
-                // Add Message info record to persis
-                persis.writeMessageInfoPersis(lcRoom.id,
-                    wabaMessageID,
-                    rcMessageID,
+                const roomCreator = await this.read
+                    .getUserReader()
+                    .getByUsername('');
+                lcRoom = await livechatCreator.createRoom(
+                    visitor,
+                    roomCreator,
                 );
 
-                // Update last message info
-                persis.writeLastMessage(lcRoom.id, wabaMessageID);
-                return;
+                const attachResponse = await api.requestFile(
+                    wabaMessage.image.id);
+                const filenameBeforeRegex = attachResponse.headers['content-disposition'];
+                const filename = filenameBeforeRegex.match('attachment; filename=(.*)');
+                if (!filename) {
+                    return;
+                }
+                const uploadDescriptor: IUploadDescriptor = {
+                    filename: filename[1],
+                    room: lcRoom,
+                    visitorToken: lcRoom.visitor.token,
+                };
+                const attachBuffer = await this.modify.getCreator()
+                    .getUploadCreator()
+                    .uploadBuffer(attachResponse.content, uploadDescriptor);
+                const attach: IMessageAttachment = {
+                    imageUrl: attachBuffer.url,
+                    collapsed: true,
+                };
+                persis.writeRoomInfoPersis(lcRoom);
+                rcMessageID = await this.sendMessageToRoom(lcRoom,
+                    lcRoom.visitor,
+                    wabaText,
+                    attach,
+                );
+            } else {
+                const [obj] = roomInfo;
+                lcRoom = obj.roomLiveChat; // Export LivechatRoom info from Persis
+                const attachResponse = await api.requestFile(
+                    wabaMessage.image.id);
+                const filenameBeforeRegex = attachResponse.headers['content-disposition'];
+                const filename = filenameBeforeRegex.match('attachment; filename=(.*)');
+                if (!filename) {
+                    return;
+                }
+                const uploadDescriptor: IUploadDescriptor = {
+                    filename: filename[1],
+                    room: lcRoom,
+                    visitorToken: lcRoom.visitor.token,
+                };
+                const attachBuffer = await this.modify.getCreator()
+                    .getUploadCreator()
+                    .uploadBuffer(attachResponse.content, uploadDescriptor);
+                const attach: IMessageAttachment = {
+                    imageUrl: attachBuffer.url,
+                    collapsed: true,
+                };
 
-            case 'text':
-                wabaMessageID = wabaMessageType.text.id;
-                wabaText = wabaMessageType.text.text.body;
-                // Check new room persis record for waID
-                if (roomInfo.length === 0) {
-                    const livechatCreator = this.modify
-                        .getCreator()
-                        .getLivechatCreator();
-                    let visitor = await this.read
-                        .getLivechatReader()
-                        .getLivechatVisitorByPhoneNumber(wabaContact.wa_id);
-                    // Check visitor available
-                    if (!visitor) {
-                        const visitorToken = livechatCreator.createToken();
-                        visitor = {
-                            id: uuid(),
-                            name: wabaContact.profile.name,
-                            username: wabaContact.wa_id,
-                            phone: [{ phoneNumber: wabaMessageType.text.from }],
-                            token: visitorToken,
-                        };
-                        // Create Visitor in system
-                        livechatCreator.createVisitor(visitor);
-                    }
-                    const roomCreator = await this.read
+                rcMessageID = await this.sendMessageToRoom(lcRoom,
+                    lcRoom.visitor,
+                    wabaText,
+                    attach);
+            }
+
+        } else if (this.bodyRequest.messages[0].type === 'text') {
+            const wabaMessage = (this.bodyRequest.messages[0]) as IWAMessageTypeText;
+            wabaMessageID = wabaMessage.id;
+            wabaText = wabaMessage.text.body;
+            // Check new room persis record for waID
+            if (roomInfo.length === 0) {
+                const livechatCreator = this.modify
+                    .getCreator()
+                    .getLivechatCreator();
+                let visitor = await this.read
+                    .getLivechatReader()
+                    .getLivechatVisitorByPhoneNumber(wabaContact.wa_id);
+                // Check visitor available
+                if (!visitor) {
+                    const visitorToken = livechatCreator.createToken();
+                    visitor = {
+                        id: uuid(),
+                        name: wabaContact.profile.name,
+                        username: wabaContact.wa_id,
+                        phone: [{ phoneNumber: wabaMessage.from }],
+                        token: visitorToken,
+                    };
+                    // Create Visitor in system
+                    livechatCreator.createVisitor(visitor);
+                }
+                const roomCreator = await this.read
                         .getUserReader()
                         .getByUsername('');
-                    lcRoom = await livechatCreator.createRoom(
+                lcRoom = await livechatCreator.createRoom(
                         visitor,
                         roomCreator,
                     );
 
-                    persis.writeRoomInfoPersis(lcRoom);
-                    rcMessageID = await this.sendMessageToRoom(lcRoom,
+                persis.writeRoomInfoPersis(lcRoom);
+                rcMessageID = await this.sendMessageToRoom(lcRoom,
                         lcRoom.visitor,
                         wabaText);
 
@@ -204,20 +191,22 @@ export class Webhookrequests {
                         lcRoom.visitor,
                         wabaText);
                 }
-                // Add Message info record to persis
-                persis.writeMessageInfoPersis(lcRoom.id,
-                    wabaMessageID,
-                    rcMessageID,
-                );
 
-                // Update last message info
-                persis.writeLastMessage(lcRoom.id, wabaMessageID);
-                return;
-        }
+        } else { return; }
 
+        // Add Message info record to persis
+        persis.writeMessageInfoPersis(lcRoom.id,
+            wabaMessageID,
+            rcMessageID,
+            true,
+            wabaAttachID,
+        );
+
+        // Update last message info
+        persis.writeLastMessage(lcRoom.id, wabaMessageID);
     }
 
-    private async createMainRoomStructure(wabaContact, wabaMessageType) {
+    private async createMainRoomStructure(wabaContact, wabaMessageType, persis) {
         const livechatCreator = this.modify
             .getCreator()
             .getLivechatCreator();
@@ -244,28 +233,21 @@ export class Webhookrequests {
             visitor,
             roomCreator,
         );
+        persis.writeRoomInfoPersis(lcRoom);
+
         return lcRoom;
 
     }
+
     private async sendMessageToRoom(room: IRoom | ILivechatRoom,
                                     visitor: IVisitor,
-                                    text: string): Promise<string> {
-        const messageStructure = this.modify
-            .getCreator()
-            .startLivechatMessage()
-            .setText(text)
-            .setParseUrls(true)
-            .setRoom(room)
-            .setVisitor(visitor);
+                                    text: string,
+                                    attach?: IMessageAttachment | undefined,
+                                    ): Promise<string> {
+        let messageStructure: ILivechatMessageBuilder;
 
-        return await this.modify.getCreator().finish(messageStructure);
-    }
-
-    private async sendMessageToRoomWithAttach(room: IRoom | ILivechatRoom,
-                                              visitor: IVisitor,
-                                              attach: IMessageAttachment,
-                                              text: string): Promise<string> {
-        const messageStructure = this.modify
+        if (attach) {
+        messageStructure = this.modify
             .getCreator()
             .startLivechatMessage()
             .addAttachment(attach)
@@ -273,7 +255,15 @@ export class Webhookrequests {
             .setParseUrls(true)
             .setRoom(room)
             .setVisitor(visitor);
-
+        } else {
+        messageStructure = this.modify
+            .getCreator()
+            .startLivechatMessage()
+            .setText(text)
+            .setParseUrls(true)
+            .setRoom(room)
+            .setVisitor(visitor);
+        }
         return await this.modify.getCreator().finish(messageStructure);
     }
 
