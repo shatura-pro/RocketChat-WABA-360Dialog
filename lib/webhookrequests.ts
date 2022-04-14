@@ -69,9 +69,7 @@ export class Webhookrequests {
                 let visitor = await this.read
                     .getLivechatReader()
                     .getLivechatVisitorByPhoneNumber(wabaContact.wa_id);
-                console.log(`FIND VISITOR: ${JSON.stringify(visitor)}`);
                 // Check visitor available
-                console.log(`CHECK VISITOR: ${!visitor}`);
                 if (!visitor) {
                     const visitorToken = livechatCreator.createToken();
                     visitor = {
@@ -206,7 +204,7 @@ export class Webhookrequests {
         persis.writeLastMessage(lcRoom.id, wabaMessageID);
     }
 
-    private async createMainRoomStructure(wabaContact, wabaMessageType, persis) {
+    private async createMainRoomStructure(wabaContact, wabaMessage, persis) {
         const livechatCreator = this.modify
             .getCreator()
             .getLivechatCreator();
@@ -220,7 +218,7 @@ export class Webhookrequests {
                 id: uuid(),
                 name: wabaContact.profile.name,
                 username: wabaContact.wa_id,
-                phone: [{ phoneNumber: wabaMessageType.text.from }],
+                phone: [{ phoneNumber: wabaMessage.from }],
                 token: visitorToken,
             };
                         // Create Visitor in system
