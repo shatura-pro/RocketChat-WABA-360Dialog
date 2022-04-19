@@ -1,4 +1,4 @@
-export interface IWAMessageTypeVoice {
+export interface IWAMessageDocument {
     context?: {
         from: string,
         id: string,
@@ -7,7 +7,8 @@ export interface IWAMessageTypeVoice {
     id: string;
     timestamp: string;
     type: string;
-    voice: {
+    document: {
+        caption?: string,
         file: string,
         id: string,
         mime_type: string,

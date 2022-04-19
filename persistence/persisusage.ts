@@ -5,6 +5,7 @@ import {
     RocketChatAssociationRecord,
 } from '@rocket.chat/apps-engine/definition/metadata/RocketChatAssociations';
 
+import { IPersisFileBuffer } from './interfaces/IPersisFileBuffer';
 import { IPersisLastMessage } from './interfaces/IPersisLastMessage';
 import { IPersisMessageInfo } from './interfaces/IPersisMessageInfo';
 import { IPersisRoomInfo } from './interfaces/IPersisRoomInfo';
@@ -15,7 +16,7 @@ export class PersisUsage {
     constructor(read: IRead, persis: IPersistence) {
         this.read = read;
         this.persis = persis;
-}
+    }
 
     public async readMessageInfoRoomIDPersis(roomID: string):
         Promise<Array<IPersisMessageInfo>> {
@@ -44,8 +45,8 @@ export class PersisUsage {
     public async writeMessageInfoPersis(roomID: string,
                                         lcMessageID: string,
                                         rcMessageID: string,
-                                        directionIn: boolean = true,
                                         attachID: string = '',
+                                        directionIn: boolean = true,
     ) {
 
         const association = [
@@ -69,22 +70,24 @@ export class PersisUsage {
             ),
         ];
         try {
-            this.persis.createWithAssociations(
+            this.persis.updateByAssociations(
+                association,
                 {
                     lcMessageID,
                     rcMessageID,
                     attachID,
                     directionIn,
                 },
-                association,
+                true,
+
             );
         } catch (err) {
             console.warn(err);
         }
     }
 
-    public async readRoomInfoByWaIDPersis(
-        waID: string): Promise<Array<IPersisRoomInfo>> {
+    public async readRoomInfoByWaIDPersis(waID: string):
+        Promise<ILivechatRoom | undefined> {
         const association = [
             new RocketChatAssociationRecord(
                 RocketChatAssociationModel.MISC,
@@ -95,40 +98,21 @@ export class PersisUsage {
                 waID,
             ),
         ];
-        let result: Array<IPersisRoomInfo> = [];
+        let result: ILivechatRoom | undefined;
         try {
             const records = (await this.read
                 .getPersistenceReader()
                 .readByAssociations(association)) as Array<IPersisRoomInfo>;
-            result = Array.from(records);
-        } catch (err) {
-            console.warn(err);
-        }
-        return result;
-    }
+            if (records.length === 0) {
+                return undefined;
+            }
+            result = records[0].roomLiveChat;
+            return result;
 
-    public async readRoomInfoByRoomIDPersis(
-        roomID: string): Promise<Array<IPersisRoomInfo>> {
-        const association = [
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.MISC,
-                'wa-active-room',
-            ),
-            new RocketChatAssociationRecord(
-                RocketChatAssociationModel.ROOM,
-                roomID,
-            ),
-        ];
-        let result: Array<IPersisRoomInfo> = [];
-        try {
-            const records = (await this.read
-                .getPersistenceReader()
-                .readByAssociations(association)) as Array<IPersisRoomInfo>;
-            result = Array.from(records);
         } catch (err) {
             console.warn(err);
         }
-        return result;
+        return undefined;
     }
 
     public async writeRoomInfoPersis(
@@ -149,11 +133,12 @@ export class PersisUsage {
                 liveChatRoom.visitor.username),
         ];
         try {
-            this.persis.createWithAssociations(
+            this.persis.updateByAssociations(
+                association,
                 {
                     roomLiveChat: liveChatRoom,
                 },
-                association,
+                true,
             );
         } catch (err) {
             console.warn(err);
@@ -177,15 +162,15 @@ export class PersisUsage {
             const records = (await this.read.getPersistenceReader()
                 .readByAssociations(associations)) as Array<IPersisLastMessage>;
             for (const element of records) {
-                    result.push(element);
-                }
+                result.push(element);
+            }
         } catch (err) {
             console.warn(err);
         }
         return result[0];
     }
 
-   public async writeLastMessage(roomID: string, lcMessageID: string):
+    public async writeLastMessage(roomID: string, lcMessageID: string):
         Promise<void> {
         const associations = [
             new RocketChatAssociationRecord(
@@ -199,13 +184,80 @@ export class PersisUsage {
         ];
 
         const data: IPersisLastMessage = {
-           lcMessageID,
+            lcMessageID,
         };
 
         try {
             this.persis.updateByAssociations(
                 associations,
                 data,
+                true,
+            );
+        } catch (err) {
+            console.warn(err);
+        }
+    }
+
+    public async readFileBuffer(roomID: string, userID: string,
+                                fileName: string): Promise<Buffer | undefined> {
+
+        const associations = [
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.MISC,
+                'file-buffer',
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.ROOM,
+                roomID,
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.USER,
+                userID,
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.FILE,
+                fileName,
+            ),
+        ];
+
+        try {
+            const records = (await this.read.getPersistenceReader()
+                .readByAssociations(associations)) as Array<IPersisFileBuffer>;
+            return records[0].data;
+        } catch (err) {
+            console.warn(err);
+        }
+        return;
+    }
+
+    public async writeFileBuffer(roomID: string, userID: string,
+                                 fileName: string, buffer: Buffer) {
+
+        // Add record for roomID
+        const associations = [
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.MISC,
+                'file-buffer',
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.ROOM,
+                roomID,
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.USER,
+                userID,
+            ),
+            new RocketChatAssociationRecord(
+                RocketChatAssociationModel.FILE,
+                fileName,
+            ),
+        ];
+        try {
+            this.persis.updateByAssociations(
+                associations,
+                {
+                    data: buffer,
+                },
                 true,
             );
         } catch (err) {

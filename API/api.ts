@@ -1,25 +1,27 @@
 import { IHttp, IHttpRequest, IRead } from '@rocket.chat/apps-engine/definition/accessors';
+import { IMessageAttachment } from '@rocket.chat/apps-engine/definition/messages/IMessageAttachment';
+import { contentType } from 'mime-types';
 
-import { IPersisLastMessage } from '../persistence/interfaces/IPersisLastMessage';
+import { IWAAttachmentDocument } from './interfaces/IWAAttachmentType/IWAAttachmentDocument';
+import { IWAAttachmentImage } from './interfaces/IWAAttachmentType/IWAAttachmentImage';
+import { IWAAttachmentVideo } from './interfaces/IWAAttachmentType/IWAAttachmentVideo';
+import { IWAAttachmentVoice } from './interfaces/IWAAttachmentType/IWAAttachmentVoice';
 import { IWAFileResponse } from './interfaces/IWAFileResponse';
+import { IWAMediaResponse } from './interfaces/IWAMediaResponse';
 import { IWAMessagesResponse } from './interfaces/IWAMessagesResponse';
 
 export class API {
-    private APIKEY: any;
     constructor(
         private read: IRead,
         private readonly http: IHttp,
         private basePath = 'https://waba.360dialog.io',
-    ) {
-        this.APIKEY = read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
-    }
+    ) {}
 
     public async setwebhook(serverURL: string, appID: string): Promise<any> {
-        this.APIKEY = await this.read.getEnvironmentReader()
+        const APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
             .getValueById('D360-API-KEY');
+
         const url: string = `${this.basePath}/v1/configs/webhook`;
         const webhookUrl = `${serverURL}/api/apps/public/${appID}/webhook`;
         const webhookContent = {
@@ -28,7 +30,7 @@ export class API {
         const httpRequest: IHttpRequest = {
             content: JSON.stringify(webhookContent),
             headers: {
-                'D360-API-KEY': this.APIKEY,
+                'D360-API-KEY': APIKEY,
                 'Content-Type': 'application/json',
             },
         };
@@ -37,12 +39,13 @@ export class API {
     }
 
     public async requestTemplates(): Promise<any> {
-        this.APIKEY = await this.read.getEnvironmentReader()
+        const APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
             .getValueById('D360-API-KEY');
+
         const packetContent: object = {
             headers: {
-                'D360-API-KEY': this.APIKEY,
+                'D360-API-KEY': APIKEY,
                 'User-Agent': 'Rocket.Chat-Apps-Engine',
             },
         };
@@ -53,10 +56,11 @@ export class API {
         );
     }
 
-    public async sendMessage(waID: string, text?: string): Promise<IWAMessagesResponse> {
-        this.APIKEY = await this.read.getEnvironmentReader()
+    public async sendMessage(waID: string, text?: string): Promise<string> {
+        const APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
             .getValueById('D360-API-KEY');
+
         const url = `${this.basePath}/v1/messages`;
         const httpRequest: IHttpRequest = {
             content: JSON.stringify({
@@ -68,36 +72,49 @@ export class API {
                 },
             }),
             headers: {
-                'D360-API-KEY': this.APIKEY,
+                'D360-API-KEY': APIKEY,
                 'Content-Type': 'application/json',
             },
         };
 
         const response = (await this.post(url, httpRequest)) as IWAMessagesResponse;
 
-        return response;
+        return response.messages[0].id;
 
     }
 
-    public async requestFile(attachID: string): Promise<IWAFileResponse> {
-        this.APIKEY = await this.read.getEnvironmentReader()
+    public async sendMessageWithAttachment(waID: string,
+                                           attachID: string,
+                                           messageAttachment: IMessageAttachment):
+        Promise<string> {
+
+        const APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
             .getValueById('D360-API-KEY');
-        const url = `${this.basePath}/v1/media`;
+
+        const url = `${this.basePath}/v1/messages`;
+
+        const contentObject = this.contentStructure(waID,
+            attachID,
+            messageAttachment);
+
         const httpRequest: IHttpRequest = {
+            content: JSON.stringify(contentObject),
             headers: {
-                'D360-API-KEY': this.APIKEY,
+                'D360-API-KEY': APIKEY,
+                'Content-Type': 'application/json',
             },
-            encoding: null,
         };
-        const newUrl = url + '/' + attachID;
-        const result = (await this.http.get(newUrl, httpRequest)) as unknown as IWAFileResponse;
-        return result;
+
+        const response = (await this.post(url, httpRequest)) as IWAMessagesResponse;
+
+        return response.messages[0].id;
+
     }
 
-    public async markMessageRead(message: IPersisLastMessage):
+    public async markMessageRead(lcMessageID: string):
         Promise<void> {
-        this.APIKEY = await this.read.getEnvironmentReader()
+        const APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
             .getValueById('D360-API-KEY');
 
@@ -107,20 +124,41 @@ export class API {
                 status: 'read',
             }),
             headers: {
-                'D360-API-KEY': this.APIKEY,
+                'D360-API-KEY': APIKEY,
                 'Content-Type': 'application/json',
             },
         };
 
         setTimeout(() => {
-            const newUrl = url + '/' + message.lcMessageID;
+            const newUrl = url + '/' + lcMessageID;
             this.http.put(newUrl, httpRequest);
         }, 2000);
     }
 
-    public async deleteAttach(attachID: string):
+    public async postMedia(data: Buffer, filename: string): Promise<string> {
+        const APIKEY = await this.read.getEnvironmentReader()
+            .getSettings()
+            .getValueById('D360-API-KEY');
+
+        const url = `${this.basePath}/v1/media`;
+        const httpRequest = {
+            content: data,
+            headers: {
+                'D360-API-KEY': APIKEY,
+                'Content-Type': contentType(filename),
+            },
+        };
+
+        const response = await this.post(url, httpRequest);
+
+        const result = response as IWAMediaResponse;
+
+        return result.media[0].id;
+    }
+
+    public async deleteMedia(attachID: string):
         Promise<void> {
-        this.APIKEY = await this.read.getEnvironmentReader()
+        const APIKEY = await this.read.getEnvironmentReader()
             .getSettings()
             .getValueById('D360-API-KEY');
 
@@ -130,7 +168,7 @@ export class API {
                 status: 'read',
             }),
             headers: {
-                'D360-API-KEY': this.APIKEY,
+                'D360-API-KEY': APIKEY,
             },
         };
 
@@ -138,6 +176,75 @@ export class API {
             const newUrl = url + '/' + attachID;
             this.http.del(newUrl, httpRequest);
         }, 2000);
+    }
+
+     public async requestMedia(attachID: string): Promise<IWAFileResponse> {
+        const APIKEY = await this.read.getEnvironmentReader()
+            .getSettings()
+            .getValueById('D360-API-KEY');
+
+        const url = `${this.basePath}/v1/media`;
+        const httpRequest: IHttpRequest = {
+            headers: {
+                'D360-API-KEY': APIKEY,
+            },
+            encoding: null,
+        };
+        const newUrl = url + '/' + attachID;
+        const result = (await this.http.get(newUrl, httpRequest)) as unknown as IWAFileResponse;
+        return result;
+     }
+
+    private contentStructure(waID: string, attachID: string,
+                             messageAttachment: IMessageAttachment) {
+
+        let contentStructure: IWAAttachmentImage | IWAAttachmentVoice |
+            IWAAttachmentVideo | IWAAttachmentDocument;
+
+        if (messageAttachment.imageUrl) {
+            contentStructure = {
+                recipient_type: 'individual',
+                to: waID,
+                type: 'image',
+                image: {
+                    id: attachID,
+                    caption: messageAttachment.description,
+                },
+            };
+        } else if (messageAttachment.audioUrl) {
+            contentStructure = {
+                recipient_type: 'individual',
+                to: waID,
+                type: 'audio',
+                audio: {
+                    id: attachID,
+                },
+            };
+        } else if (messageAttachment.videoUrl) {
+            contentStructure = {
+                recipient_type: 'individual',
+                to: waID,
+                type: 'video',
+                video: {
+                    id: attachID,
+                    caption: messageAttachment.description,
+                },
+            };
+        } else {
+            contentStructure = {
+                recipient_type: 'individual',
+                to: waID,
+                type: 'document',
+                document: {
+                    id: attachID,
+                    caption: (messageAttachment.title) ?
+                        messageAttachment.title.value :
+                        '',
+                },
+            };
+        }
+
+        return contentStructure;
     }
 
     private async post(url: string, packageContent: object): Promise<object> {

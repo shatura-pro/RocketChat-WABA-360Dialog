@@ -1,4 +1,4 @@
-export interface IWAMessageTypeText {
+export interface IWAMessageText {
     context?: {
         from: string,
         id: string,
@@ -7,7 +7,8 @@ export interface IWAMessageTypeText {
     id: string;
     timestamp: string;
     text: {
-      body: string,
+        body: string,
+        id?: string,
     };
     type: string;
 }

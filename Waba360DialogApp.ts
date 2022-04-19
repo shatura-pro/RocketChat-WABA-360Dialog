@@ -23,9 +23,13 @@ import {
     RocketChatAssociationRecord,
 } from '@rocket.chat/apps-engine/definition/metadata';
 import { ISetting, SettingType } from '@rocket.chat/apps-engine/definition/settings';
+import { IFileUploadContext } from '@rocket.chat/apps-engine/definition/uploads/IFileUploadContext';
+import { IPreFileUpload } from '@rocket.chat/apps-engine/definition/uploads/IPreFileUpload';
 
 import { API } from './API/api';
+import { GetSidebarIcon } from './endpoints/get-sidebar-icon';
 import { Webhook } from './endpoints/webhook';
+import { AgentRequests } from './lib/AgentRequest';
 import { IPersisMessageInfo } from './persistence/interfaces/IPersisMessageInfo';
 import { PersisUsage } from './persistence/persisusage';
 import { WAPPTmplsCommands } from './slashcommans/wapptmplscommands';
@@ -33,7 +37,7 @@ import { WAPPTmplsCommands } from './slashcommans/wapptmplscommands';
 export class Waba360DialogApp
     extends App
     implements IPostMessageSent, IPostLivechatRoomClosed,
-    IPostLivechatAgentAssigned {
+    IPostLivechatAgentAssigned, IPreFileUpload {
     public D360APIKEY: string;
     public TemplatesLanguageCode: string;
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
@@ -85,22 +89,8 @@ export class Waba360DialogApp
         modify: IModify,
     ): Promise<void> {
 
-        const persis = new PersisUsage(read, persistence);
-        const result = await persis.readRoomInfoByRoomIDPersis(message.room.id);
-        if (result.length !== 0 && message.id !== undefined &&
-            (message.sender.type === 'user' ||
-                message.sender.type === 'bot')) {
-
-            const waMessage = new API(read, http);
-            const lcMessageID = await waMessage.sendMessage(
-                result[0].roomLiveChat.visitor.username,
-                message.text);
-            persis.writeMessageInfoPersis(message.room.id,
-                lcMessageID.messages[0].id,
-                message.id,
-                false,
-            );
-        }
+        const agentRequest = new AgentRequests(message, read, modify, http, persistence);
+        agentRequest.sendMessage();
 
     }
 
@@ -130,7 +120,7 @@ export class Waba360DialogApp
 
         for (const el of allMessages) {
             if (el.attachID !== '') {
-                api.deleteAttach(el.attachID);
+                api.deleteMedia(el.attachID);
             }
         }
 
@@ -145,21 +135,42 @@ export class Waba360DialogApp
         persis.removeByAssociations(association);
     }
 
+    public async executePreFileUpload(context: IFileUploadContext,
+                                      read: IRead,
+                                      http: IHttp,
+                                      persis: IPersistence,
+                                      modify: IModify): Promise<void> {
+
+        // const persistent = new PersisUsage(read, persis);
+        // await persistent.writeFileBuffer(context.file.rid, context.file.userId,
+        //     context.file.name, context.content);
+
+    }
+
     public async executePostLivechatAgentAssigned(context: ILivechatEventContext,
                                                   read: IRead,
                                                   http: IHttp,
                                                   persis: IPersistence,
                                                   modify: IModify): Promise<void> {
-        const searchLastMessage = new PersisUsage(read, persis);
-        const lastMessage = await searchLastMessage.readLastMessage(context.room.id);
+        const persistent = new PersisUsage(read, persis);
         const api = new API(read, http);
-        api.markMessageRead(lastMessage);
+
+        const lastMessage = await persistent.readLastMessage(context.room.id);
+        api.markMessageRead(lastMessage.lcMessageID);
     }
 
     protected async extendConfiguration(
         configuration: IConfigurationExtend,
         environmentRead: IEnvironmentRead,
     ): Promise<void> {
+
+        // Register API endpoint get-sidebar-icon
+        configuration.api.provideApi({
+            visibility: ApiVisibility.PUBLIC,
+            security: ApiSecurity.UNSECURE,
+            endpoints: [new GetSidebarIcon(this)],
+        });
+
         // Register API endpoint Webhook
         configuration.api.provideApi({
             visibility: ApiVisibility.PUBLIC,
@@ -169,6 +180,7 @@ export class Waba360DialogApp
         // Add slash command /wapptmpls
         const wappCommand: WAPPTmplsCommands = new WAPPTmplsCommands(this);
         await configuration.slashCommands.provideSlashCommand(wappCommand);
+
         // Add 360Dialog API KEY setting
         await configuration.settings.provideSetting({
             id: 'D360-API-KEY',
@@ -179,6 +191,40 @@ export class Waba360DialogApp
             i18nLabel: 'D360-API-KEY-setting-label',
             i18nDescription: 'D360-API-KEY-setting-description',
         });
+
+        // Add Depatment setting
+        await configuration.settings.provideSetting({
+            id: 'DEPARTMENTID',
+            packageValue: 'Write department id or name here.',
+            type: SettingType.STRING,
+            required: false,
+            public: false,
+            i18nLabel: 'DEPARTMENTID-setting-label',
+            i18nDescription: 'DEPARTMENTID-setting-description',
+        });
+
+        // Add Welcome message setting
+        await configuration.settings.provideSetting({
+            id: 'WELCOME-MESSAGE',
+            packageValue: 'Write welcome message here.',
+            type: SettingType.STRING,
+            required: false,
+            public: false,
+            i18nLabel: 'WELCOME-MESSAGE-setting-label',
+            i18nDescription: 'WELCOME-MESSAGE-setting-description',
+        });
+
+        // Add Finish message setting
+        await configuration.settings.provideSetting({
+            id: 'FINISH-MESSAGE',
+            packageValue: 'Write conversation finish message here.',
+            type: SettingType.STRING,
+            required: false,
+            public: false,
+            i18nLabel: 'FINISH-MESSAGE-setting-label',
+            i18nDescription: 'FINISH-MESSAGE-setting-description',
+        });
+
         // Add Template language code
         await configuration.settings.provideSetting({
             id: 'Templates-Language-Code',

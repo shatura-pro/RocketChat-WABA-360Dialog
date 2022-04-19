@@ -1,7 +1,7 @@
 import { IHttp, IModify, IPersistence, IRead } from '@rocket.chat/apps-engine/definition/accessors';
 import { ApiEndpoint, IApiEndpointInfo, IApiRequest, IApiResponse } from '@rocket.chat/apps-engine/definition/api';
 
-import { Webhookrequests } from '../lib/webhookrequests';
+import { WabaRequest } from '../lib/WabaRequest';
 
 export class Webhook extends ApiEndpoint {
     public path = 'webhook';
@@ -15,7 +15,8 @@ export class Webhook extends ApiEndpoint {
         persis: IPersistence,
     ): Promise<IApiResponse> {
 
-        const newRequest = new Webhookrequests(
+        const newRequest = new WabaRequest(
+                this.app,
                 request,
                 read,
                 modify,
