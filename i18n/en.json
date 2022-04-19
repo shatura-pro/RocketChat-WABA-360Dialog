@@ -1,9 +1,22 @@
 {
     "wapptmpls_description": "This command will open layout with template choose and telephone number enter.",
-    "D360-API-KEY-setting-label": "D360Dialog API KEY",
-    "D360-API-KEY-setting-description": "Input D360Dialog API KEY here if you know it, if not generate it on https://hub.360dialog.com",
-    "WhatsApp-WebHook-setting-label": "APIs POST templateMessage from WhatsApp by Rocket.Chat",
-    "WhatsApp-WebHook-setting-description": "Paste the link to the webhook (POST templateMessage) from the APIs settings",
+    "d360-api-key-setting-label": "D360Dialog API KEY",
+    "d360-api-key-setting-description": "Input D360Dialog API KEY here if you know it, if not generate it on https://hub.360dialog.com",
+    "d360-api-key-placeholder": "API KEY HERE",
     "languageCode-setting-label": "Language code",
-    "languageCode-setting-description": "Enter the language code to sort the templates"
+    "languageCode-setting-description": "Enter the language code to sort the templates",
+    "department-setting-label": "Department name",
+    "department-setting-description": "The setting is specified for sending incoming messages to the department queue.",
+    "department-placeholder": "Write here department id or name",
+    "welcome-message-setting-label": "Welcome Message",
+    "welcome-message-setting-description": "The message is automatically sent when new conversations are created.",
+    "welcome-message-placeholder": "Write here welcome message.",
+    "finish-message-setting-label": "Message when closing a conversation",
+    "finish-message-setting-description": "The message is automatically sent when the conversation is closed.",
+    "finish-message-placeholder": "Write a message here at the end of the conversation",
+    "agent-signature-setting-label": "Agent's display name",
+    "agent-signature-setting-description": "Configure the type of display of the agent's name when sending messages.",
+    "none-label": "None",
+    "agent-name": "Agent's name",
+    "agent-login": "Agent's login"
 }

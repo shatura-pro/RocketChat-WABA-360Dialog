@@ -4,6 +4,8 @@ import { IPersistence } from '@rocket.chat/apps-engine/definition/accessors/IPer
 import { IRead } from '@rocket.chat/apps-engine/definition/accessors/IRead';
 import { ILivechatRoom, isLivechatRoom } from '@rocket.chat/apps-engine/definition/livechat/ILivechatRoom';
 import { IMessage } from '@rocket.chat/apps-engine/definition/messages';
+import { IUser } from '@rocket.chat/apps-engine/definition/users/IUser';
+import { contentType } from 'mime-types';
 
 import { API } from '../API/api';
 import { PersisUsage } from '../persistence/persisusage';
@@ -29,13 +31,21 @@ export class AgentRequests {
         const api = new API(this.read, this.http);
         let lcMessageID: string = '';
         let attachID: string = '';
-        const textMessage = this.message.text;
+        let textMessage = this.message.text;
+        if (this.message.text) {
+            textMessage = await this.signWithAgentSignature(this.message.sender,
+                this.message.text);
+        }
 
         // Upload file to media volume 360Dialog
         if (this.message.file?._id) {
             const fileBuffer = await this.read.getUploadReader()
                 .getBufferById(this.message.file?._id);
-            attachID = await api.postMedia(fileBuffer, this.message.file.name);
+
+            const detectedFileType = contentType(this.message.file.name);
+            const fileType = this.message.file.type;
+            attachID = await api.postMedia(fileBuffer,
+                (detectedFileType) ? detectedFileType : fileType);
         }
 
         if (isLivechatRoom(this.message.room)) {
@@ -56,11 +66,27 @@ export class AgentRequests {
                 }
 
                 persis.writeMessageInfoPersis(lcRoom.id,
-                lcMessageID,
-                this.message.id,
-                attachID,
-                false);
+                    lcMessageID,
+                    this.message.id,
+                    attachID,
+                    false);
             }
         }
+    }
+
+    private async signWithAgentSignature(sender: IUser, text: string) {
+
+        const signatureType = await this.read.getEnvironmentReader()
+            .getSettings().getValueById('Agent-Signature');
+
+        if (signatureType === 'agent-name') {
+            return `[${sender.name}] - ${text}`;
+        }
+
+        if (signatureType === 'agent-login') {
+            return `[${sender.username}] - ${text}`;
+        }
+
+        return text;
     }
 }

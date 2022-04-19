@@ -18,9 +18,7 @@ export class API {
     ) {}
 
     public async setwebhook(serverURL: string, appID: string): Promise<any> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url: string = `${this.basePath}/v1/configs/webhook`;
         const webhookUrl = `${serverURL}/api/apps/public/${appID}/webhook`;
@@ -39,9 +37,7 @@ export class API {
     }
 
     public async requestTemplates(): Promise<any> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const packetContent: object = {
             headers: {
@@ -57,9 +53,7 @@ export class API {
     }
 
     public async sendMessage(waID: string, text?: string): Promise<string> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url = `${this.basePath}/v1/messages`;
         const httpRequest: IHttpRequest = {
@@ -88,9 +82,7 @@ export class API {
                                            messageAttachment: IMessageAttachment):
         Promise<string> {
 
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url = `${this.basePath}/v1/messages`;
 
@@ -114,9 +106,7 @@ export class API {
 
     public async markMessageRead(lcMessageID: string):
         Promise<void> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url = `${this.basePath}/v1/messages`;
         const httpRequest: IHttpRequest = {
@@ -136,9 +126,7 @@ export class API {
     }
 
     public async postMedia(data: Buffer, filename: string): Promise<string> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url = `${this.basePath}/v1/media`;
         const httpRequest = {
@@ -158,9 +146,7 @@ export class API {
 
     public async deleteMedia(attachID: string):
         Promise<void> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url = `${this.basePath}/v1/messages`;
         const httpRequest: IHttpRequest = {
@@ -179,9 +165,7 @@ export class API {
     }
 
      public async requestMedia(attachID: string): Promise<IWAFileResponse> {
-        const APIKEY = await this.read.getEnvironmentReader()
-            .getSettings()
-            .getValueById('D360-API-KEY');
+        const APIKEY = await this.getAPIKey();
 
         const url = `${this.basePath}/v1/media`;
         const httpRequest: IHttpRequest = {
@@ -247,6 +231,12 @@ export class API {
         return contentStructure;
     }
 
+    private async getAPIKey() {
+        return await this.read.getEnvironmentReader()
+                        .getSettings()
+                        .getValueById('D360-API-KEY');
+    }
+
     private async post(url: string, packageContent: object): Promise<object> {
         const response = await this.http.post(url, packageContent);
         // If it isn't a 2xx code, something wrong happened
@@ -266,4 +256,5 @@ export class API {
         }
         return JSON.parse(response.content || '{}');
     }
+
 }

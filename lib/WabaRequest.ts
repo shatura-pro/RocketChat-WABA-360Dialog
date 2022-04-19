@@ -3,7 +3,6 @@ import { IModify } from '@rocket.chat/apps-engine/definition/accessors/IModify';
 import { IPersistence } from '@rocket.chat/apps-engine/definition/accessors/IPersistence';
 import { IRead } from '@rocket.chat/apps-engine/definition/accessors/IRead';
 import { IApiRequest } from '@rocket.chat/apps-engine/definition/api/IRequest';
-import { IApp } from '@rocket.chat/apps-engine/definition/IApp';
 import { IVisitor } from '@rocket.chat/apps-engine/definition/livechat';
 import { ILivechatRoom } from '@rocket.chat/apps-engine/definition/livechat/ILivechatRoom';
 import { IMessageAttachment } from '@rocket.chat/apps-engine/definition/messages/IMessageAttachment';
@@ -30,7 +29,6 @@ export class WabaRequest {
     private persis: IPersistence;
     private appSource: IExtraRoomParams;
     constructor(
-        app: IApp,
         request: IApiRequest,
         read: IRead,
         modify: IModify,
@@ -45,7 +43,7 @@ export class WabaRequest {
         this.appSource = {
             source: {
                 type: 'app',
-                id: app.getID(),
+                id: uuid(),
                 alias: 'WhatsApp 360Dialog',
                 label: 'integration',
                 sidebarIcon: 'whatsappBusiness',
@@ -94,6 +92,8 @@ export class WabaRequest {
                 );
             }
 
+            this.sendWelcomeMessage(wabaContact.wa_id);
+
             rcMessageID = await this.sendMessageToRoom(lcRoom,
                 lcRoom.visitor,
                 wabaText,
@@ -134,6 +134,10 @@ export class WabaRequest {
     private async createMainRoomStructure(wabaContact: IWAMessageContact,
                                           wabaMessage: any,
                                           persis: PersisUsage) {
+        // const department: string = await this.read.getEnvironmentReader()
+        //     .getSettings()
+        //     .getValueById('Department');
+
         const messageType: string = this.bodyRequest.messages[0].type;
         const livechatCreator = this.modify
             .getCreator()
@@ -162,7 +166,14 @@ export class WabaRequest {
             roomCreator,
             this.appSource,
         );
-
+        // if (department !== '') {
+        //     const transferData: ILivechatTransferData = {
+        //         currentRoom: lcRoom,
+        //         targetDepartment: 'Отдел технической поддержки',
+        //     };
+        //     await this.modify.getUpdater().getLivechatUpdater()
+        //         .transferVisitor(visitor, transferData);
+        // }
         persis.writeRoomInfoPersis(lcRoom);
 
         return lcRoom;
@@ -298,5 +309,16 @@ export class WabaRequest {
             .setVisitor(visitor);
         }
         return await this.modify.getCreator().finish(messageStructure);
+    }
+
+    private async sendWelcomeMessage(waID: string) {
+        const welcomeMessage = await this.read.getEnvironmentReader()
+            .getSettings().getValueById('Welcome-Message');
+        const api = new API(this.read, this.http);
+
+        if (welcomeMessage && welcomeMessage !== '') {
+            api.sendMessage(waID, welcomeMessage);
+        }
+
     }
 }

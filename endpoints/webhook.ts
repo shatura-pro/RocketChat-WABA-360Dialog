@@ -16,7 +16,6 @@ export class Webhook extends ApiEndpoint {
     ): Promise<IApiResponse> {
 
         const newRequest = new WabaRequest(
-                this.app,
                 request,
                 read,
                 modify,

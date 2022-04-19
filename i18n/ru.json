@@ -1,10 +1,22 @@
 {
     "wapptmpls_description": "Команда откроет макет с выбором шаблона и вводом номера телефона",
-    "D360-API-KEY-setting-label": "360Dialog API KEY",
-    "D360-API-KEY-setting-description": "Введите здесь API KEY D360Dialog, если вы его знаете, если нет, сгенерируйте его на https://hub.360dialog.com",
-    "WhatsApp-WebHook-setting-label": "APIs POST templateMessage из WhatsApp от Rocket.Chat",
-    "WhatsApp-WebHook-setting-description": "Вставьте ссылку на webhook (POST templateMessage) из настроек APIs",
+    "d360-api-key-setting-label": "360Dialog API KEY",
+    "d360-api-key-setting-description": "Введите здесь API KEY D360Dialog, если вы его знаете, если нет, сгенерируйте его на https://hub.360dialog.com",
+    "d360-api-key-placeholder": "API KEY HERE",
     "languageCode-setting-label": "Код языка шаблонов",
-    "languageCode-setting-description": "Введите код языка для сортировки шаблонов"
+    "languageCode-setting-description": "Введите код языка для сортировки шаблонов.",
+    "department-setting-label": "Имя отдела",
+    "department-setting-description": "Настройка указывается для направления входящих сообщений в очередь отдела",
+    "department-placeholder": "Введите здесь идентификатор или название отдела",
+    "welcome-message-setting-label": "Сообщение приветствия",
+    "welcome-message-setting-description": "Сообщение автоматически отправляется при создании новых разговоров.",
+    "welcome-message-placeholder": "Напишите здесь приветственное сообщение",
+    "finish-message-setting-label": "Сообщение при закрытия разговора",
+    "finish-message-setting-description": "Сообщение автоматически отправляется при закрытии разговора.",
+    "finish-message-placeholder": "Напишите здесь сообщение при завершении разговора",
+    "agent-signature-setting-label": "Отображаемое имя агента",
+    "agent-signature-setting-description": "Настройке вид отображения имени агента при отправке сообщений.",
+    "none-label": "Нет",
+    "agent-name": "Имя агента",
+    "agent-login": "Логин агента"
 }
-

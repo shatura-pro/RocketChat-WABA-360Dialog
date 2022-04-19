@@ -25,19 +25,19 @@ export class WAPPTmplsCommands implements ISlashCommand {
             read,
             http,
         );
-        const templates = await requestTemplates.requestTemplates();
-        const TmplsList: Array<any> = [];
-        templates.waba_templates.forEach((item: any) => {
-            if (
-                item.status === 'approved' &&
-                item.language === this.app.TemplatesLanguageCode &&
-                (item.name.match(new RegExp('sample', 'g')) || []).length === 0
-            ) {
-                const newitem = this.searchVariables(item);
-                TmplsList.push(newitem);
-            }
-        });
-        console.log(TmplsList);
+        // const templates = await requestTemplates.requestTemplates();
+        // const TmplsList: Array<any> = [];
+        // templates.waba_templates.forEach((item: any) => {
+        //     if (
+        //         item.status === 'approved' &&
+        //         item.language === this.app.TemplatesLanguageCode &&
+        //         (item.name.match(new RegExp('sample', 'g')) || []).length === 0
+        //     ) {
+        //         const newitem = this.searchVariables(item);
+        //         TmplsList.push(newitem);
+        //     }
+        // });
+        // console.log(TmplsList);
         // const block = modify.getCreator().getBlockBuilder();
     }
 
