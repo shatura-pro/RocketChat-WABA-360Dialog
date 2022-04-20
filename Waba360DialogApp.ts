@@ -108,10 +108,10 @@ export class Waba360DialogApp
     }
 
     public async executePreFileUpload(context: IFileUploadContext,
-        read: IRead,
-        http: IHttp,
-        persis: IPersistence,
-        modify: IModify): Promise<void> {
+                                      read: IRead,
+                                      http: IHttp,
+                                      persis: IPersistence,
+                                      modify: IModify): Promise<void> {
 
         // const persistent = new PersisUsage(read, persis);
         // await persistent.writeFileBuffer(context.file.rid, context.file.userId,
@@ -120,10 +120,10 @@ export class Waba360DialogApp
     }
 
     public async executePostLivechatAgentAssigned(context: ILivechatEventContext,
-        read: IRead,
-        http: IHttp,
-        persis: IPersistence,
-        modify: IModify): Promise<void> {
+                                                  read: IRead,
+                                                  http: IHttp,
+                                                  persis: IPersistence,
+                                                  modify: IModify): Promise<void> {
         const persistent = new PersisUsage(read, persis);
         const api = new API(read, http);
 

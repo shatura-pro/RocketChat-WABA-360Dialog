@@ -3,7 +3,7 @@ import { IModify } from '@rocket.chat/apps-engine/definition/accessors/IModify';
 import { IPersistence } from '@rocket.chat/apps-engine/definition/accessors/IPersistence';
 import { IRead } from '@rocket.chat/apps-engine/definition/accessors/IRead';
 import { IApiRequest } from '@rocket.chat/apps-engine/definition/api/IRequest';
-import { IVisitor } from '@rocket.chat/apps-engine/definition/livechat';
+import { ILivechatTransferData, IVisitor } from '@rocket.chat/apps-engine/definition/livechat';
 import { ILivechatRoom } from '@rocket.chat/apps-engine/definition/livechat/ILivechatRoom';
 import { IMessageAttachment } from '@rocket.chat/apps-engine/definition/messages/IMessageAttachment';
 import { IRoom } from '@rocket.chat/apps-engine/definition/rooms/IRoom';
@@ -134,9 +134,10 @@ export class WabaRequest {
     private async createMainRoomStructure(wabaContact: IWAMessageContact,
                                           wabaMessage: any,
                                           persis: PersisUsage) {
-        // const department: string = await this.read.getEnvironmentReader()
-        //     .getSettings()
-        //     .getValueById('Department');
+        const departmentAppVar = await this.read.getEnvironmentReader()
+            .getSettings().getValueById('Department');
+        const department = await this.read.getLivechatReader()
+            .getLivechatDepartmentByIdOrName(departmentAppVar);
 
         const messageType: string = this.bodyRequest.messages[0].type;
         const livechatCreator = this.modify
@@ -166,14 +167,15 @@ export class WabaRequest {
             roomCreator,
             this.appSource,
         );
-        // if (department !== '') {
-        //     const transferData: ILivechatTransferData = {
-        //         currentRoom: lcRoom,
-        //         targetDepartment: 'Отдел технической поддержки',
-        //     };
-        //     await this.modify.getUpdater().getLivechatUpdater()
-        //         .transferVisitor(visitor, transferData);
-        // }
+
+        if (department) {
+            const transferData: ILivechatTransferData = {
+                currentRoom: lcRoom,
+                targetDepartment: department.id,
+            };
+            this.modify.getUpdater().getLivechatUpdater()
+                .transferVisitor(visitor, transferData);
+        }
         persis.writeRoomInfoPersis(lcRoom);
 
         return lcRoom;
